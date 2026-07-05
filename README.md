@@ -93,8 +93,8 @@ Rather than simple retries, the **Fixer Agent** behaves like a localized compile
 ### Installation & Initialization
 ```bash
 # 1. Clone local workspace
-git clone https://github.com/Prajwallnaik/Multi-Agent-Data-Analyst.git
-cd Multi-Agent-Data-Analyst
+git clone https://github.com/Prajwallnaik/MultiAgent_DataAnalyst.git
+cd MultiAgent_DataAnalyst
 
 # 2. Build Python runtime dependencies
 pip install -r requirements.txt
