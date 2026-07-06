@@ -9,7 +9,7 @@ import os
 import logging
 import pandas as pd
 
-from llm.openrouter_client import chat
+from llm.nvidia_client import chat
 from orchestrator.state import AnalysisState
 
 logger = logging.getLogger(__name__)

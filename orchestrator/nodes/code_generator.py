@@ -8,7 +8,7 @@ raw Python (pandas / plotly) code as a string.  No execution here.
 import os
 import logging
 
-from llm.openrouter_client import chat
+from llm.nvidia_client import chat
 from orchestrator.state import AnalysisState
 
 logger = logging.getLogger(__name__)

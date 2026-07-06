@@ -132,7 +132,7 @@ Multi-Agent-Data-Analyst/
 ├── sandbox/                    # Runtime containment models
 │   └── safe_exec.py            # Restrictive exec engine & module proxies
 ├── llm/                        # API clients
-│   └── openrouter_client.py    # OpenAI-compatible NVIDIA Build API wrapper
+│   └── nvidia_client.py        # OpenAI-compatible NVIDIA Build API wrapper
 ├── db/                         # Telemetry storage
 │   ├── db.py                   # SQLite log writes & queries
 │   └── models.py               # SQLite schema definition DDL
