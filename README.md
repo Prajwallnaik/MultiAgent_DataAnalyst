@@ -23,21 +23,6 @@ The system maps queries to structured execution plans, generates deterministic c
 
 ![Multi Agent Data Analyst Architecture](Assets/Multi%20Agent%20Data%20Analyst%20Architecture.png)
 
-```mermaid
-graph TD
-    A[Upload CSV] --> B[Data Understanding Agent]
-    B -->|Builds schema_context| C[Query Planner Agent]
-    C -->|Determines Intent & plan| D[Code Generation Agent]
-    D -->|Writes Pandas/SQL| E[Execution Layer]
-    E -->|Success| F[Insight Agent]
-    E -->|Failure & attempts < max| G[Fixer Agent]
-    G -->|Corrects code| E
-    E -->|Failure & attempts >= max| H[Fallback Node]
-    F -->|Plain-text Summary| I[Streamlit UI]
-    H -->|Raw Table Output| I
-```
-
----
 
 ## Architectural Highlights & Engineering Patterns
 
