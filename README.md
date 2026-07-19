@@ -21,7 +21,21 @@ This repository implements a **cooperative multi-agent pipeline** designed to ex
 
 The system maps queries to structured execution plans, generates deterministic code paths, executes those paths inside restricted execution environments, and applies a self-correcting compiler loop on compilation or runtime exceptions.
 
-![Architecture](Assets/Multi Agent Data Analyst Architecture.png)
+![Multi Agent Data Analyst Architecture](Assets/Multi%20Agent%20Data%20Analyst%20Architecture.png)
+
+```mermaid
+graph TD
+    A[Upload CSV] --> B[Data Understanding Agent]
+    B -->|Builds schema_context| C[Query Planner Agent]
+    C -->|Determines Intent & plan| D[Code Generation Agent]
+    D -->|Writes Pandas/SQL| E[Execution Layer]
+    E -->|Success| F[Insight Agent]
+    E -->|Failure & attempts < max| G[Fixer Agent]
+    G -->|Corrects code| E
+    E -->|Failure & attempts >= max| H[Fallback Node]
+    F -->|Plain-text Summary| I[Streamlit UI]
+    H -->|Raw Table Output| I
+```
 
 ---
 
