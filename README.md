@@ -21,6 +21,8 @@ This repository implements a **cooperative multi-agent pipeline** designed to ex
 
 The system maps queries to structured execution plans, generates deterministic code paths, executes those paths inside restricted execution environments, and applies a self-correcting compiler loop on compilation or runtime exceptions.
 
+![Multi Agent Data Analyst Architecture](Assets/Multi%20Agent%20Data%20Analyst%20Architecture.png)
+
 ```mermaid
 graph TD
     A[Upload CSV] --> B[Data Understanding Agent]
