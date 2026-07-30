@@ -22,7 +22,4 @@ venv.bak/
 .DS_Store
 Thumbs.db
 
-# Excluded project files
-Premium_Frontend_PRD_Multi_Agent_Data_Analyst.docx
-brain.md
-app.py
+
