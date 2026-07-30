@@ -8,6 +8,7 @@ import sqlite3
 import os
 import logging
 from contextlib import contextmanager
+from typing import Optional
 
 from db.models import SCHEMA_SQL
 
@@ -41,15 +42,15 @@ def get_connection():
 
 def log_query(
     user_query: str,
-    output_type: str | None = None,
-    analysis_plan: str | None = None,
-    code_type: str | None = None,
-    generated_code: str | None = None,
+    output_type: Optional[str] = None,
+    analysis_plan: Optional[str] = None,
+    code_type: Optional[str] = None,
+    generated_code: Optional[str] = None,
     execution_success: bool = False,
     retry_count: int = 0,
     fallback_used: bool = False,
-    insight_text: str | None = None,
-    error_message: str | None = None,
+    insight_text: Optional[str] = None,
+    error_message: Optional[str] = None,
 ) -> int:
     """Insert a row into query_log and return the new row id."""
     with get_connection() as conn:

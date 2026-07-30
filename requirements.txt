@@ -2,6 +2,10 @@ streamlit
 pandas
 langgraph
 langchain-core
-plotly
+plotly>=6.1.1
+kaleido>=1.3.0
 requests
 python-dotenv
+fastapi
+uvicorn[standard]
+python-multipart

@@ -44,7 +44,14 @@ def run(state: AnalysisState) -> dict:
     prompt = prompt.replace("{user_query}", state["user_query"])
 
     messages = [
-        {"role": "system", "content": "You are a precise data analysis planner. Respond only with valid JSON."},
+        {
+            "role": "system",
+            "content": (
+                "You are a precise data analysis planner and python code writer. "
+                "Do NOT include any import statements in generated_code (pd, np, px are pre-imported). "
+                "Respond only with valid JSON."
+            ),
+        },
         {"role": "user", "content": prompt},
     ]
 
@@ -62,6 +69,16 @@ def run(state: AnalysisState) -> dict:
 
     code_type = plan.get("code_type", "pandas")
     analysis_plan = plan.get("analysis_plan", "Analyze the data based on the user's question.")
+    generated_code = plan.get("generated_code", "")
+
+    # Clean code fences if present inside JSON string
+    if generated_code.startswith("```"):
+        first_nl = generated_code.find("\n")
+        if first_nl != -1:
+            generated_code = generated_code[first_nl + 1:]
+    if generated_code.endswith("```"):
+        generated_code = generated_code[:-3]
+    generated_code = generated_code.strip()
 
     logger.info("Classified as output_type=%s, code_type=%s", output_type, code_type)
     logger.debug("Analysis plan: %s", analysis_plan)
@@ -70,4 +87,5 @@ def run(state: AnalysisState) -> dict:
         "output_type": output_type,
         "analysis_plan": analysis_plan,
         "code_type": code_type,
+        "generated_code": generated_code,
     }
