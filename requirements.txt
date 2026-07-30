@@ -6,6 +6,6 @@ plotly>=6.1.1
 kaleido>=1.3.0
 requests
 python-dotenv
-fastapi
-uvicorn[standard]
+fastapi[standard]
 python-multipart
+python-docx

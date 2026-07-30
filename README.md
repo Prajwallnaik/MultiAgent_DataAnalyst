@@ -93,9 +93,20 @@ NVIDIA_API_KEY=nvapi-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
 ### Start the Application
-Execute the Streamlit application runner:
+This project uses a React frontend and a FastAPI backend. You'll need to run both concurrently in separate terminal sessions.
+
+#### 1. Start the Backend (FastAPI)
+From the root directory of the project, use `uv` and the `fastapi dev` CLI to start the backend with hot-reloading:
 ```bash
-python -m streamlit run app.py
+uv run fastapi dev main.py
+```
+
+#### 2. Start the Frontend (React/Vite)
+Navigate to the `frontend` directory and start the Vite development server:
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
 ---
@@ -104,7 +115,11 @@ python -m streamlit run app.py
 
 ```text
 Multi-Agent-Data-Analyst/
-  app.py                      # Streamlit UI dashboard
+  main.py                     # FastAPI backend application
+  app.py                      # (Legacy) Streamlit UI dashboard
+  frontend/                   # React/Vite frontend UI
+    src/                      # React components and hooks
+    package.json              # Node dependencies and scripts
   orchestrator/               # Graph orchestration and state models
     graph.py                  # Graph topology and routing configurations
     state.py                  # Pipeline state schemas
