@@ -1,0 +1,192 @@
+@import "tailwindcss";
+
+/* ============================================================================
+   DESIGN SYSTEM — Multi-Agent Data Analyst (Premium Tier)
+   ============================================================================
+   Glassmorphism · Animated Gradients · Pipeline Animations · Premium Polish
+   ========================================================================== */
+
+@theme {
+  --font-sans: "Anthropic Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+
+  /* Primary brand palette */
+  --color-brand: #3b82f6;           /* Standard Blue */
+  --color-brand-light: #60a5fa;     /* Light Blue */
+  --color-brand-dark: #2563eb;      /* Dark Blue */
+  --color-brand-glow: rgba(59, 130, 246, 0.1);
+  --color-brand-subtle: rgba(59, 130, 246, 0.03);
+
+  /* Accent colors */
+  --color-emerald: #34d399;
+  --color-emerald-glow: rgba(52, 211, 153, 0.15);
+  --color-amber: #fbbf24;
+  --color-amber-glow: rgba(251, 191, 36, 0.15);
+  --color-rose: #fb7185;
+  --color-rose-glow: rgba(251, 113, 133, 0.15);
+  --color-cyan: #22d3ee;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+
+  /* Balanced neutral light palette */
+  --color-zinc-950: #ffffff;
+  --color-zinc-900: #fafafa;
+  --color-zinc-850: #f5f5f5;
+  --color-zinc-800: #e5e5e5;
+  --color-zinc-750: #d4d4d4;
+  --color-zinc-700: #a3a3a3;
+  --color-zinc-600: #737373;
+  --color-zinc-500: #525252;
+  --color-zinc-400: #404040;
+  --color-zinc-300: #262626;
+  --color-zinc-200: #171717;
+  --color-zinc-100: #0a0a0a;
+  --color-zinc-5: #ffffff;
+}
+
+/* ── Base ──────────────────────────────────────────────────────────────────── */
+
+body {
+  background: #ffffff;
+  color: var(--color-zinc-100);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+}
+
+::selection {
+  background: var(--color-brand);
+  color: white;
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────────────────────── */
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.15);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+/* ── Stark Minimal Utilities ────────────────────────────────────────────────── */
+
+.glass {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.glass-card {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.glass-panel {
+  background: #FCFCFC;
+  border-right: 1px solid #EBE5DC;
+}
+
+.radial-cream-bg {
+  background: radial-gradient(circle at top, #FAF7F2 40%, #F5EFEB 100%);
+}
+
+.glass-input {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(224, 218, 208, 0.75);
+  border-radius: 28px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+  transition: all 0.25s ease;
+  min-height: 56px;
+}
+
+.glass-input:focus-within {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: #B89B73;
+  box-shadow: 0 4px 20px rgba(184, 155, 115, 0.08), 0 0 0 3px rgba(185, 156, 115, 0.1);
+}
+
+.glass-input input::placeholder {
+  color: #9E9890;
+  font-weight: 400;
+  transition: opacity 0.25s ease;
+}
+
+.glass-input input:focus::placeholder {
+  opacity: 0.5;
+}
+
+/* ── Hover Lift ────────────────────────────────────────────────────────────── */
+
+.hover-lift {
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-1px);
+}
+
+/* ── Keyframe Animations ───────────────────────────────────────────────────── */
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes flow-line {
+  0% { stroke-dashoffset: 20; }
+  100% { stroke-dashoffset: 0; }
+}
+
+/* ── Animation Utilities ───────────────────────────────────────────────────── */
+
+.animate-shimmer { animation: shimmer 2s ease-in-out infinite; }
+
+/* ── Pipeline Specific ─────────────────────────────────────────────────────── */
+
+.pipeline-connector {
+  stroke-dasharray: 6 4;
+  animation: flow-line 0.8s linear infinite;
+}
+
+/* ── Plotly ─────────────────────────────────────────────────────────────────── */
+
+.plotly-container {
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

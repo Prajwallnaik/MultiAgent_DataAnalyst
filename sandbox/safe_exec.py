@@ -2,8 +2,12 @@
 
 This module deliberately does not provide a general-purpose Python sandbox.
 Untrusted code is first parsed and accepted only when it matches a small,
-data-analysis-only AST subset. In particular, it rejects imports, dunder
+data-analysis-only AST subset.  In particular, it rejects imports, dunder
 access, builtins, control flow, arbitrary function calls, and mutation.
+
+For a public or adversarial deployment, run analysis in an OS/container
+sandbox as an additional boundary.  This validator is designed to keep a
+local desktop application from executing arbitrary prompt-generated Python.
 """
 
 from __future__ import annotations
@@ -77,6 +81,7 @@ class _AnalysisValidator(ast.NodeVisitor):
         self.assigned.add(target)
 
     def visit_Expr(self, node: ast.Expr) -> None:
+        # Plotly layout updates are the only permitted side-effect statement.
         if not isinstance(node.value, ast.Call):
             self._reject("Only assignments and Plotly update_layout calls are allowed.")
         self.visit(node.value)
@@ -93,6 +98,7 @@ class _AnalysisValidator(ast.NodeVisitor):
     def visit_Call(self, node: ast.Call) -> None:
         if not isinstance(node.func, ast.Attribute):
             self._reject("Only approved pandas, numpy, and plotly function calls are allowed.")
+
         func = node.func
         if isinstance(func.value, ast.Name) and func.value.id in _SAFE_MODULE_CALLS:
             if func.attr not in _SAFE_MODULE_CALLS[func.value.id]:
@@ -103,6 +109,7 @@ class _AnalysisValidator(ast.NodeVisitor):
             if func.attr == "update_layout" and not isinstance(func.value, ast.Name):
                 self._reject("update_layout may only be called on a named chart variable.")
             self.visit(func.value)
+
         for keyword in node.keywords:
             if keyword.arg == "inplace":
                 self._reject("In-place dataframe mutation is not permitted.")
@@ -133,7 +140,12 @@ def _validate_code(code: str) -> ast.Module:
 
 
 def safe_exec(code: str, df: pd.DataFrame, timeout_seconds: int = 10) -> Any:
-    """Run validated dataframe analysis code and return its ``result`` value."""
+    """Run validated dataframe analysis code and return its ``result`` value.
+
+    ``timeout_seconds`` is retained for callers but is intentionally not used:
+    a thread timeout cannot safely stop Python code. The bounded AST subset
+    removes loops and arbitrary calls, so there is no unbounded user code path.
+    """
     del timeout_seconds
     tree = _validate_code(code)
     namespace = {"__builtins__": {}, "df": df.copy(deep=True), "pd": pd, "np": np, "px": px}

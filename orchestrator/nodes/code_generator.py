@@ -45,6 +45,10 @@ def run(state: AnalysisState) -> dict:
     dict
         State updates: ``generated_code``.
     """
+    if state.get("generated_code"):
+        logger.info("Code Generator Agent: code already present from single-pass planner — skipping LLM call.")
+        return {"generated_code": state["generated_code"]}
+
     code_type = state.get("code_type", "pandas")
     logger.info("Code Generator Agent: writing %s code for output_type=%s …", code_type, state["output_type"])
 
