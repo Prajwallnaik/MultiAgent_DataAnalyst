@@ -10,28 +10,16 @@ import json
 import logging
 import requests
 from dotenv import load_dotenv
-from typing import Optional
 
 load_dotenv()
 
 logger = logging.getLogger(__name__)
 
 # ── Model configuration ─────────────────────────────────────────────────────
-PRIMARY_MODEL = "meta/llama-3.1-8b-instruct"
-SECONDARY_MODEL = "meta/llama-3.3-70b-instruct"
-FALLBACK_MODEL = "nvidia/nemotron-3-ultra-550b-a55b"
+PRIMARY_MODEL = "nvidia/nemotron-3-ultra-550b-a55b"
+FALLBACK_MODEL = "nvidia/nemotron-3-super-120b-a12b"
 
 NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
-
-# Global HTTP session for connection pooling and TLS reuse across requests
-_HTTP_SESSION = requests.Session()
-_HTTP_ADAPTER = requests.adapters.HTTPAdapter(
-    pool_connections=10,
-    pool_maxsize=20,
-    max_retries=2
-)
-_HTTP_SESSION.mount("https://", _HTTP_ADAPTER)
-_HTTP_SESSION.mount("http://", _HTTP_ADAPTER)
 
 
 def _get_api_key() -> str:
@@ -49,7 +37,7 @@ def _call_nvidia(
     messages: list[dict],
     model: str,
     temperature: float = 0.2,
-    max_tokens: int = 1024,
+    max_tokens: int = 2048,
 ) -> str:
     """Send a chat completion request to NVIDIA Build API and return the content.
 
@@ -60,7 +48,6 @@ def _call_nvidia(
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
-        "Accept": "application/json",
     }
 
     payload = {
@@ -70,11 +57,11 @@ def _call_nvidia(
         "max_tokens": max_tokens,
     }
 
-    resp = _HTTP_SESSION.post(
+    resp = requests.post(
         NVIDIA_BASE_URL,
         headers=headers,
         json=payload,
-        timeout=90,
+        timeout=180,
     )
     resp.raise_for_status()
 
@@ -108,9 +95,9 @@ def chat(
     str
         The LLM's response content.
     """
-    last_error: Optional[Exception] = None
+    last_error: Exception | None = None
 
-    for model in (PRIMARY_MODEL, SECONDARY_MODEL, FALLBACK_MODEL):
+    for model in (PRIMARY_MODEL, FALLBACK_MODEL):
         try:
             logger.info("Calling model %s", model)
             content = _call_nvidia(
@@ -134,13 +121,11 @@ def chat(
 
             return content
 
-        except requests.RequestException as exc:
-            status = getattr(exc.response, "status_code", "?") if getattr(exc, "response", None) is not None else "Network/Timeout"
+        except requests.HTTPError as exc:
             logger.warning(
-                "Model %s failed (%s) — falling back. Error: %s",
+                "Model %s returned HTTP %s — falling back.",
                 model,
-                status,
-                exc
+                exc.response.status_code if exc.response is not None else "?",
             )
             last_error = exc
         except (ValueError, KeyError, IndexError) as exc:

@@ -44,31 +44,14 @@ Your job is to:
 
 ---
 
-## Code Rules
-- The DataFrame is pre-loaded as `df`. Pre-imported variables available: `pd`, `np`, `px`, `df`.
-- Do NOT use `import` statements or `open()`.
-- If `code_type` is "pandas":
-  - MUST assign the final result to a variable named `result`.
-  - For tables/filters/aggregations: `result` should be a DataFrame or Series.
-  - For charts: `result = px.line(df, ...)` or `result = px.bar(df, ...)`.
-  - For scalars: `result` can be a single numeric or text value.
-- If `code_type` is "sql":
-  - `generated_code` MUST be a raw SQL SELECT query.
-  - Do NOT assign it to a variable. Just write the raw SQL query.
-  - The table name is `df`.
-- Use ONLY column names listed in the schema context.
-
----
-
 ## Response Format (strict JSON — no markdown fences, no explanation)
 
 ```json
-{
+{{
   "output_type": "<one of the 10 types above>",
-  "analysis_plan": "<1-2 step plan in plain English>",
-  "code_type": "<'pandas' or 'sql'>",
-  "generated_code": "<python code assigning final output to result (if pandas) OR raw SQL SELECT query (if sql)>"
-}
+  "analysis_plan": "<2-4 step plan in plain English>",
+  "code_type": "pandas or sql"
+}}
 ```
 
 Return ONLY the JSON object. Do not wrap it in markdown code fences. Do not add any text before or after the JSON.

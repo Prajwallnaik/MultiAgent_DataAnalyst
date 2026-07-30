@@ -12,7 +12,7 @@ Write Python code using **pandas** (and optionally **numpy** / **plotly.express*
 1. The DataFrame is already loaded as `df`. Do NOT reload or re-read any file.
 2. Your code MUST assign its final output to a variable named `result`.
    - For tables/filters/aggregations: `result` should be a DataFrame or Series.
-   - For charts: `result` should be a Plotly figure (e.g., `result = px.bar(...)`). For pie/donut charts, you MUST always pass the `names` parameter (e.g., `result = px.pie(df, values='col', names='label_col')`) so that legend labels are generated. For grouped/stacked bar or multi-series line/scatter charts, use the `color` parameter. Do NOT set `showlegend=False` on any pie or donut chart. Always ensure `fig.update_layout(showlegend=True)` is called for pie and donut charts.
+   - For charts: `result` should be a Plotly figure (e.g., `result = px.bar(...)`).
    - For scalars: `result` can be a single value.
 3. You may ONLY use: `pd` (pandas), `np` (numpy), `px` (plotly.express), and `df`.
 4. Do NOT use `import` statements — libraries are pre-loaded.
