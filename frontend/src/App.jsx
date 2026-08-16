@@ -1,12 +1,13 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Menu, Download, Plus, ArrowDown, Loader } from 'lucide-react';
+import { Menu, Download, Plus, ArrowDown, Loader, ChevronDown } from 'lucide-react';
 import { triggerHaptic } from './utils/haptics';
 
 import Sidebar from './components/Sidebar';
 import ResultCard from './components/ResultCard';
 import HeroSection, { QueryBar } from './components/HeroSection';
 import InsightPanel from './components/InsightPanel';
+import ProjectsPage from './components/ProjectsPage';
 import SkeletonLoader from './components/ui/SkeletonLoader';
 import Tooltip from './components/ui/Tooltip';
 import logoUrl from './assets/logo.png';
@@ -16,6 +17,8 @@ const API_BASE = '';
 export default function App() {
   // Core state
   const [session, setSession] = useState(null);
+  const [currentView, setCurrentView] = useState('chat'); // 'chat' | 'projects'
+  const [viewingProject, setViewingProject] = useState(null); // tracks which project detail is open
   const [history, setHistory] = useState([]);
   const [query, setQuery] = useState('');
   const [pendingQuery, setPendingQuery] = useState('');
@@ -113,6 +116,7 @@ export default function App() {
   const chatEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const scrollContainerRef = useRef(null);
+  const skipAutoSubmitRef = useRef(false);
 
   // Custom Scrollbar States
   const [scrollPercent, setScrollPercent] = useState(0);
@@ -210,9 +214,12 @@ export default function App() {
       const data = await res.json();
       triggerHaptic('success');
 
-      // Start fresh chat session for newly uploaded file
-      const newChatId = `chat_${Date.now()}`;
-      setCurrentChatId(newChatId);
+      // Reuse current chat if it's empty (e.g. created by project query), else start fresh
+      let targetChatId = currentChatId;
+      if (!targetChatId || history.length > 0 || (currentView === 'projects' && !pendingQuery)) {
+        targetChatId = `chat_${Date.now()}`;
+      }
+      setCurrentChatId(targetChatId);
       setHistory([]);
       setSession({
         sessionId: data.session_id,
@@ -224,6 +231,26 @@ export default function App() {
         schemaContext: data.schema_context,
       });
       setSidebarOpen(true);
+      
+      if (currentView === 'projects' && viewingProject) {
+        try {
+          const local = localStorage.getItem('dopeness_projects');
+          if (local) {
+            const projs = JSON.parse(local);
+            const updated = projs.map(p => {
+              if (p.id === viewingProject.id) {
+                 const existingChats = p.chats || [];
+                 if (!existingChats.includes(targetChatId)) {
+                     return { ...p, chats: [...existingChats, targetChatId], lastUpdated: Date.now() };
+                 }
+              }
+              return p;
+            });
+            localStorage.setItem('dopeness_projects', JSON.stringify(updated));
+          }
+        } catch(e) {}
+        setCurrentView('chat');
+      }
     } catch (err) {
       triggerHaptic('error');
       setUploadError(err.message);
@@ -232,12 +259,14 @@ export default function App() {
     }
   };
 
-  const submitQuery = async (q) => {
+  const submitQuery = async (q, overrideSession = null) => {
+    const activeSession = overrideSession || session;
     const trimmed = (q || query).trim();
     if (!trimmed || loading) return;
 
-    if (!session) {
+    if (!activeSession) {
       setUploadError("Please upload a CSV dataset to run your query.");
+      setPendingQuery(trimmed);
       fileInputRef.current?.click();
       return;
     }
@@ -248,7 +277,7 @@ export default function App() {
 
     try {
       const formData = new FormData();
-      formData.append('session_id', session.sessionId);
+      formData.append('session_id', activeSession.sessionId);
       formData.append('query', trimmed);
 
       const res = await fetch(`${API_BASE}/api/query`, {
@@ -298,8 +327,29 @@ export default function App() {
       ]);
     } finally {
       setLoading(false);
+      setPendingQuery('');
     }
   };
+
+  // Auto-submit pending query if a session is uploaded and chat is empty
+  // Only fires when pendingQuery transitions from empty to non-empty (user typed a query)
+  // and session becomes available (file was uploaded after).
+  // Does NOT fire on chat restore because handleSelectChat clears pendingQuery.
+  const prevPendingQueryRef = useRef('');
+  useEffect(() => {
+    // Only auto-submit if pendingQuery was just SET (wasn't there before)
+    // This prevents re-submission on chat restore where pendingQuery is already ''
+    const justSet = pendingQuery && !prevPendingQueryRef.current;
+    prevPendingQueryRef.current = pendingQuery;
+
+    if (session && pendingQuery && history.length === 0 && currentChatId && !loading) {
+      // Extra safety: only submit if the query isn't already in history
+      const alreadyInHistory = history.some(h => h.query === pendingQuery);
+      if (!alreadyInHistory) {
+        submitQuery(pendingQuery);
+      }
+    }
+  }, [session, pendingQuery, currentChatId]);
 
   const handleViewInsight = (entry) => {
     setInsightEntry(entry);
@@ -440,16 +490,17 @@ export default function App() {
   };
 
   const handleNewChat = () => {
-    triggerHaptic('medium');
     setSession(null);
     setHistory([]);
-    setCurrentChatId(null);
     setQuery('');
+    setPendingQuery('');
+    setIsTemporary(false);
+    setInsightOpen(false);
+    setCurrentChatId(`chat_${Date.now()}`);
+    setCurrentView('chat');
     setLoading(false);
     setUploading(false);
     setUploadError(null);
-    setInsightOpen(false);
-    setIsTemporary(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -472,13 +523,19 @@ export default function App() {
     }
   };
 
-  const handleSelectChat = (chat) => {
-    setCurrentChatId(chat.id);
-    setSession(chat.session);
-    setHistory(chat.history || []);
-    setInsightOpen(false);
-    setUploadError(null);
-    setIsTemporary(false);
+  const handleSelectChat = (id) => {
+    const chat = savedChats.find(c => c.id === id);
+    if (chat) {
+      // Prevent the auto-submit effect from re-running saved queries
+      skipAutoSubmitRef.current = true;
+      setSession(chat.session);
+      setHistory(chat.history);
+      setCurrentChatId(id);
+      setIsTemporary(false);
+      setQuery('');
+      setPendingQuery('');
+      setCurrentView('chat');
+    }
   };
 
   const handleDeleteChat = (chatId) => {
@@ -522,6 +579,7 @@ export default function App() {
         session={session}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
+        onOpen={() => setSidebarOpen(true)}
         onNewChat={handleNewChat}
         onTemporaryChat={handleTemporaryChat}
         savedChats={savedChats}
@@ -532,10 +590,13 @@ export default function App() {
         onTogglePin={handleTogglePin}
         queryHistory={history}
         onHistoryItemClick={handleHistoryItemClick}
+        currentView={currentView}
+        onOpenProjects={() => setCurrentView('projects')}
+        onOpenChats={() => setCurrentView('chat')}
       />
 
       {/* Main Content Area */}
-      <main className={`flex-1 flex flex-col h-screen relative transition-[padding-left] duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] bg-white ${sidebarOpen ? 'md:pl-[300px]' : 'pl-0'
+      <main className={`flex-1 flex flex-col h-screen relative transition-[padding-left] duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] bg-white ${sidebarOpen ? 'md:pl-[300px]' : 'md:pl-[60px] pl-0'
         }`}>
         {/* Top Navigation Bar */}
         <header className="sticky top-0 bg-transparent px-6 py-4 flex items-center justify-between z-30">
@@ -544,7 +605,7 @@ export default function App() {
             {!sidebarOpen && (
               <motion.button
                 onClick={() => { triggerHaptic('light'); setSidebarOpen(true); }}
-                className="p-2 rounded-lg hover:bg-[#F5F0E8] text-[#68625B] hover:text-[#000000] transition-colors cursor-pointer"
+                className="p-2 rounded-lg hover:bg-[#F5F0E8] text-[#68625B] hover:text-[#000000] transition-colors cursor-pointer md:hidden"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 aria-label="Open Navigation"
@@ -553,11 +614,110 @@ export default function App() {
               </motion.button>
             )}
 
-            {/* User Logo */}
-            <div className="flex items-center gap-2 select-none">
-              <span className="text-xs font-semibold text-zinc-100 tracking-wide">
-                Workspace
-              </span>
+            {/* Breadcrumb Navigation */}
+            <div className="flex items-center gap-2.5 select-none text-[15px] pl-1 min-h-[32px]">
+              <AnimatePresence mode="wait">
+              {(() => {
+                // Context-aware breadcrumb
+                if (currentView === 'projects') {
+                  if (viewingProject) {
+                    return (
+                      <motion.div 
+                        key={`proj-${viewingProject.id}`}
+                        className="flex items-center gap-2.5"
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 10 }}
+                        transition={{ duration: 0.2, ease: 'easeOut' }}
+                      >
+                        <span 
+                          className="font-medium text-[#8C8275] cursor-pointer hover:text-[#1F1F1F] transition-colors"
+                          onClick={() => setViewingProject(null)}
+                        >
+                          Projects
+                        </span>
+                        <span className="text-[#D0C7BA]">/</span>
+                        <span className="font-medium text-[#1F1F1F]">
+                          {viewingProject.name}
+                        </span>
+                      </motion.div>
+                    );
+                  } else {
+                    return (
+                      <motion.span 
+                        key="projects-home"
+                        className="font-semibold text-[#1F1F1F] tracking-wide"
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 10 }}
+                        transition={{ duration: 0.2, ease: 'easeOut' }}
+                      >
+                        Projects
+                      </motion.span>
+                    );
+                  }
+                }
+
+                // Chat view breadcrumb
+                const activeChat = savedChats.find(c => c.id === currentChatId);
+                const chatTitle = activeChat?.title || 'New chat';
+                
+                let projectName = null;
+                let parentProject = null;
+                try {
+                  const local = localStorage.getItem('dopeness_projects');
+                  if (local) {
+                    const projs = JSON.parse(local);
+                    const proj = projs.find(p => p.chats?.includes(currentChatId));
+                    if (proj) {
+                      projectName = proj.name;
+                      parentProject = proj;
+                    }
+                  }
+                } catch (e) {
+                  console.error(e);
+                }
+
+                if (projectName) {
+                  return (
+                    <motion.div 
+                      key={`chat-${currentChatId}`}
+                      className="flex items-center gap-2.5"
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 10 }}
+                      transition={{ duration: 0.2, ease: 'easeOut' }}
+                    >
+                      <span 
+                        className="font-medium text-[#8C8275] cursor-pointer hover:text-[#1F1F1F] transition-colors"
+                        onClick={() => { setViewingProject(parentProject); setCurrentView('projects'); }}
+                      >
+                        {projectName}
+                      </span>
+                      <span className="text-[#D0C7BA]">/</span>
+                      <span className="font-medium text-[#1F1F1F] flex items-center gap-1.5 cursor-pointer hover:bg-[#F2F2F2] rounded-md px-1.5 py-1 -ml-1.5 transition-colors">
+                        {chatTitle}
+                        <ChevronDown size={14} className="text-[#8C8275] opacity-70" />
+                      </span>
+                    </motion.div>
+                  );
+                } else {
+                  return (
+                    <motion.span 
+                      key="workspace"
+                      className="font-semibold text-[#1F1F1F] tracking-wide"
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 10 }}
+                      transition={{ duration: 0.2, ease: 'easeOut' }}
+                    >
+                      Workspace
+                    </motion.span>
+                  );
+                }
+              })()}
+              </AnimatePresence>
+              
               {isTemporary && (
                 <span className="text-[10px] bg-[#EAE5DC] text-[#68625B] px-2 py-0.5 rounded-full font-medium ml-2">
                   Temporary Chat
@@ -589,18 +749,58 @@ export default function App() {
           </div>
         </header>
 
-        {/* Content Area */}
         <div className="flex-1 flex flex-col overflow-hidden">
           <AnimatePresence mode="wait">
-            <motion.div
-              key="workspace"
-              className="flex-1 flex flex-col overflow-hidden"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              {!session || (history.length === 0 && !loading) ? (
+            {currentView === 'projects' ? (
+              <ProjectsPage key="projects" onSelectChat={handleSelectChat} onViewingProjectChange={setViewingProject} viewingProject={viewingProject} onUploadClick={() => fileInputRef.current?.click()} onStartProjectChat={(project, queryText) => {
+                let inheritedSession = session;
+                if (!inheritedSession && project.chats && project.chats.length > 0) {
+                  for (let i = project.chats.length - 1; i >= 0; i--) {
+                    const existingChat = savedChats.find(c => c.id === project.chats[i]);
+                    if (existingChat && existingChat.session) {
+                      inheritedSession = existingChat.session;
+                      break;
+                    }
+                  }
+                }
+
+                const newChatId = `chat_${Date.now()}`;
+                const newChat = {
+                  id: newChatId,
+                  title: queryText.slice(0, 30) + (queryText.length > 30 ? '...' : ''),
+                  timestamp: new Date().toISOString(),
+                  session: inheritedSession,
+                  messages: []
+                };
+                
+                try {
+                  const local = localStorage.getItem('dopeness_projects');
+                  if (local) {
+                    const projs = JSON.parse(local);
+                    const updated = projs.map(p => p.id === project.id ? { ...p, chats: [...(p.chats || []), newChatId], lastUpdated: Date.now() } : p);
+                    localStorage.setItem('dopeness_projects', JSON.stringify(updated));
+                  }
+                } catch(e) {}
+                
+                setSavedChats(prev => [newChat, ...prev]);
+                setCurrentChatId(newChatId);
+                setHistory([]);
+                if (inheritedSession) setSession(inheritedSession);
+                setCurrentView('chat');
+                
+                // Submit the query immediately
+                submitQuery(queryText, inheritedSession);
+              }} />
+            ) : (
+              <motion.div
+                key="workspace"
+                className="flex-1 flex flex-col overflow-hidden"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+              {history.length === 0 && !loading ? (
                 <HeroSection
                   session={session}
                   query={query}
@@ -641,7 +841,7 @@ export default function App() {
                           {/* User Query Bubble (matching ResultCard) */}
                           <div className="flex justify-end w-full">
                             <div className="relative group/bubble flex flex-col items-end gap-1.5 max-w-[85%]">
-                              <div className="px-6 py-3.5 rounded-[24px] bg-[#f4f4f4] text-[15px] font-normal text-[#0d0d0d] select-all leading-relaxed">
+                              <div className="px-6 py-3.5 rounded-lg bg-[#f4f4f4] text-[15px] font-normal text-[#0d0d0d] select-all leading-relaxed">
                                 {pendingQuery}
                               </div>
                             </div>
@@ -704,6 +904,7 @@ export default function App() {
                 </>
               )}
             </motion.div>
+            )}
           </AnimatePresence>
         </div>
       </main>
@@ -716,7 +917,7 @@ export default function App() {
       />
 
       {/* Floating Hover Conversational History Widget */}
-      {history.length > 0 && (
+      {currentView === 'chat' && history.length > 0 && (
         <div
           className="fixed right-10 top-1/2 -translate-y-1/2 z-40 flex items-center gap-3"
           onMouseEnter={() => setHoverHistoryOpen(true)}
@@ -760,45 +961,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Custom Right-Side Scrollbar Slider */}
-      {history.length > 0 && isScrollable && (
-        <div className="fixed right-3 top-1/4 bottom-1/4 w-5 z-40 flex flex-col items-center justify-between py-4 bg-white/85 backdrop-blur-md border border-[#E0DAD0] rounded-full shadow-md select-none">
-          {/* Scroll Up Button */}
-          <button
-            onClick={scrollUp}
-            className="w-4 h-4 flex items-center justify-center text-[7px] text-[#68625B] hover:text-[#1F1F1F] hover:bg-[#F5F0E8] rounded-full transition-colors cursor-pointer select-none"
-            title="Scroll Up"
-          >
-            ▲
-          </button>
 
-          {/* Slider Track */}
-          <div
-            onClick={handleTrackClick}
-            className="flex-1 w-1 bg-[#FAF8F5]/80 hover:bg-[#FAF8F5] border border-[#E9E2D7] rounded-full relative my-3 cursor-pointer"
-            title="Jump to position"
-          >
-            {/* Scroll Thumb */}
-            <div
-              onMouseDown={handleThumbMouseDown}
-              className="absolute left-1/2 -translate-x-1/2 w-2 bg-[#8C8275] rounded-full shadow-sm cursor-pointer hover:bg-[#68625B] transition-all duration-100"
-              style={{
-                height: '40px',
-                top: `${scrollPercent * (100 - (40 / 220) * 100)}%`,
-              }}
-            />
-          </div>
-
-          {/* Scroll Down Button */}
-          <button
-            onClick={scrollDown}
-            className="w-4 h-4 flex items-center justify-center text-[7px] text-[#68625B] hover:text-[#1F1F1F] hover:bg-[#F5F0E8] rounded-full transition-colors cursor-pointer select-none"
-            title="Scroll Down"
-          >
-            ▼
-          </button>
-        </div>
-      )}
 
       <input
         ref={fileInputRef}

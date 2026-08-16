@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   ChevronRight, Copy, Check, Code, AlertTriangle, RotateCcw, Lightbulb, Pencil, Loader
@@ -24,6 +24,19 @@ export default function ResultCard({ entry, index, onViewInsight, onEditSubmit, 
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(entry.query || '');
   const [isSpinning, setIsSpinning] = useState(false);
+  const textareaRef = useRef(null);
+
+  // Only run initialization (focus, auto-size, cursor-to-end) once when entering edit mode
+  useEffect(() => {
+    if (isEditing && textareaRef.current) {
+      const el = textareaRef.current;
+      el.focus();
+      el.style.height = 'auto';
+      el.style.height = el.scrollHeight + 'px';
+      const len = el.value.length;
+      el.setSelectionRange(len, len);
+    }
+  }, [isEditing]);
 
   const {
     query,
@@ -84,34 +97,55 @@ export default function ResultCard({ entry, index, onViewInsight, onEditSubmit, 
       {/* User Query Bubble (ChatGPT Editable Style) */}
       <div className="flex justify-end group">
         {isEditing ? (
-          <div className="max-w-[85%] w-full flex flex-col gap-2 p-3.5 rounded-2xl bg-[#FAF8F5] border border-[#B89B73] shadow-md">
-            <textarea
-              value={editText}
-              onChange={(e) => setEditText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  if (editText.trim() && !loading) {
-                    setIsEditing(false);
-                    onEditSubmit?.(index, editText.trim());
+          <div className="w-full flex flex-col">
+            <div className="w-full rounded-2xl border-2 border-[#7BAAF7] bg-white transition-all duration-150">
+              <textarea
+                value={editText}
+                onChange={(e) => {
+                  setEditText(e.target.value);
+                  e.target.style.height = 'auto';
+                  e.target.style.height = e.target.scrollHeight + 'px';
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (editText.trim() && !loading) {
+                      setIsEditing(false);
+                      onEditSubmit?.(index, editText.trim());
+                    }
                   }
-                }
-                if (e.key === 'Escape') {
-                  setIsEditing(false);
-                  setEditText(query);
-                }
-              }}
-              className="w-full bg-white border border-[#E9E2D7] rounded-xl p-3 text-sm text-[#1F1F1F] focus:outline-none focus:border-[#B89B73] resize-none min-h-[70px]"
-              autoFocus
-            />
-            <div className="flex items-center justify-end gap-2">
+                  if (e.key === 'Escape') {
+                    setIsEditing(false);
+                    setEditText(query);
+                  }
+                }}
+                ref={textareaRef}
+                className="w-full bg-transparent border-none outline-none resize-none px-5 py-4 text-[15px] text-[#1a1a1a] leading-[1.6] placeholder:text-[#a1a1aa]"
+                style={{ fontFamily: 'inherit' }}
+                rows={1}
+              />
+            </div>
+            <div className="flex items-center justify-end gap-3 mt-2 pr-1">
+              <Tooltip content="Editing will re-run the query and replace the response" position="top">
+                <button
+                  type="button"
+                  className="p-0.5 text-[#9ca3af] hover:text-[#6b7280] transition-colors cursor-help flex items-center"
+                  tabIndex={-1}
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.3"/>
+                    <path d="M8 7.5V11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                    <circle cx="8" cy="5.5" r="0.75" fill="currentColor"/>
+                  </svg>
+                </button>
+              </Tooltip>
               <button
                 onClick={() => {
                   triggerHaptic('light');
                   setIsEditing(false);
                   setEditText(query);
                 }}
-                className="px-3 py-1.5 rounded-lg border border-[#E9E2D7] bg-white hover:bg-[#F5F0E8] text-xs font-semibold text-[#68625B] transition-colors cursor-pointer"
+                className="text-[13px] font-medium text-[#6b7280] hover:text-[#111827] transition-colors cursor-pointer select-none"
               >
                 Cancel
               </button>
@@ -124,22 +158,24 @@ export default function ResultCard({ entry, index, onViewInsight, onEditSubmit, 
                   }
                 }}
                 disabled={!editText.trim() || loading}
-                className="px-3.5 py-1.5 rounded-lg bg-[#1F1F1F] hover:bg-[#333333] disabled:bg-[#E0DAD0] text-xs font-semibold text-white transition-colors cursor-pointer disabled:cursor-not-allowed shadow-sm"
+                className="px-3.5 py-1 rounded-full bg-[#1a1a1a] hover:bg-[#2d2d2d] disabled:bg-[#d4d4d8] text-[13px] font-medium text-white transition-all duration-150 cursor-pointer disabled:cursor-not-allowed select-none"
               >
-                Save & Submit
+                Save
               </button>
             </div>
           </div>
         ) : (
           <div className="relative group/bubble flex flex-col items-end gap-1.5 max-w-[85%]">
-            <div className="px-6 py-3.5 rounded-[24px] bg-[#f4f4f4] text-[15px] font-normal text-[#0d0d0d] select-all leading-relaxed">
+            <div className="px-6 py-3.5 rounded-lg bg-[#f4f4f4] text-[15px] font-normal text-[#0d0d0d] select-all leading-relaxed">
               {query}
             </div>
 
             <div className="opacity-0 group-hover/bubble:opacity-100 flex items-center gap-1 transition-opacity duration-200 mr-2">
-              <span className="text-[10px] text-[#8C8275] font-medium mr-1.5 select-none">
-                {entry.createdAt ? new Date(entry.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </span>
+              <Tooltip content={entry.createdAt ? new Date(entry.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric' }) : new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric' })} position="top">
+                <span className="text-[11px] text-[#4a7295] font-medium mr-1.5 select-none cursor-default">
+                  {entry.createdAt ? new Date(entry.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </span>
+              </Tooltip>
 
               <Tooltip content="Retry prompt" position="top">
                 <button
@@ -289,13 +325,12 @@ export default function ResultCard({ entry, index, onViewInsight, onEditSubmit, 
             {isLatest && !loading && (
               <div className="flex justify-start mt-4 mb-2">
                 <div className="relative group/logo flex items-center">
-                  <motion.svg
+                  <motion.img
+                    src={logoUrl}
+                    alt="Logo"
                     width="36"
                     height="36"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="cursor-pointer rounded-md"
+                    className="cursor-pointer rounded-md flex-shrink-0"
                     onClick={() => {
                       if (!isSpinning) {
                         triggerHaptic('light');
@@ -305,11 +340,7 @@ export default function ResultCard({ entry, index, onViewInsight, onEditSubmit, 
                     }}
                     animate={isSpinning ? { rotate: 180, scale: 0.95 } : { rotate: 0, scale: 1 }}
                     transition={{ duration: 0.6, ease: "easeInOut" }}
-                  >
-                    <motion.ellipse cx="12" cy="12" rx="9" ry="3.5" stroke="#EB6546" strokeWidth="1.2" transform="rotate(30 12 12)" />
-                    <motion.ellipse cx="12" cy="12" rx="9" ry="3.5" stroke="#EB6546" strokeWidth="1.2" transform="rotate(90 12 12)" />
-                    <motion.ellipse cx="12" cy="12" rx="9" ry="3.5" stroke="#EB6546" strokeWidth="1.2" transform="rotate(150 12 12)" />
-                  </motion.svg>
+                  />
                   <div className="absolute left-full ml-3 opacity-0 group-hover/logo:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
                     <div className="bg-[#1a1a1a] text-[#F3F3F3] text-[11px] italic font-medium px-3 py-1.5 rounded-xl shadow-md border border-[#333]">
                       Hi, I’m Dopeness. How can I help you today?
