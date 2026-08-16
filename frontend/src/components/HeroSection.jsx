@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Mic, AudioLines, ArrowUp, Loader2, Search } from 'lucide-react';
 import { triggerHaptic } from '../utils/haptics';
 import Tooltip from './ui/Tooltip';
+import logoUrl from '../assets/logo.png';
 
 const SUGGESTIONS = [
   'Show me the top 10 rows',
@@ -203,13 +204,12 @@ export default function HeroSection({
         transition={{ duration: 0.5 }}
       >
         <div className="flex items-center justify-center gap-2">
-          <motion.svg
+          <motion.img
+            src={logoUrl}
+            alt="Logo"
             width="64"
             height="64"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className="cursor-pointer"
+            className="cursor-pointer flex-shrink-0"
             onClick={() => {
               if (!isSpinning) {
                 triggerHaptic('light');
@@ -219,11 +219,7 @@ export default function HeroSection({
             }}
             animate={isSpinning ? { rotate: 180, scale: 0.95 } : { rotate: 0, scale: 1 }}
             transition={{ duration: 0.6, ease: "easeInOut" }}
-          >
-            <motion.ellipse cx="12" cy="12" rx="9" ry="3.5" stroke="#EB6546" strokeWidth="1.2" transform="rotate(30 12 12)" />
-            <motion.ellipse cx="12" cy="12" rx="9" ry="3.5" stroke="#EB6546" strokeWidth="1.2" transform="rotate(90 12 12)" />
-            <motion.ellipse cx="12" cy="12" rx="9" ry="3.5" stroke="#EB6546" strokeWidth="1.2" transform="rotate(150 12 12)" />
-          </motion.svg>
+          />
           <h1 
             className="text-[32px] md:text-[38px] font-normal text-[#2A2D31] tracking-tight leading-tight"
             style={{ fontFamily: '"Times New Roman", Times, serif' }}
